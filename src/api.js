@@ -1,13 +1,27 @@
 export const BASE_URL = 'http://localhost:3000';
 
+export class ApiError extends Error {
+  constructor(status, statusText) {
+    super(`${status} ${statusText}`);
+    this.name = 'ApiError';
+    this.status = status;
+    this.statusText = statusText;
+  }
+}
+
 export async function requisicao(caminho, opcoes = {}) {
+  const { headers: headersDaChamada, ...resto } = opcoes;
+
   const resp = await fetch(`${BASE_URL}${caminho}`, {
-    ...opcoes,
-    headers: { 'Content-Type': 'application/json' },
+    ...resto,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headersDaChamada,
+    },
   });
 
   if (!resp.ok) {
-    throw new Error(`${resp.status} ${resp.statusText}`);
+    throw new ApiError(resp.status, resp.statusText);
   }
 
   if (resp.status === 204) return null;
@@ -36,4 +50,14 @@ export function apiPut(caminho, dados, opcoes = {}) {
 
 export function apiDelete(caminho, opcoes = {}) {
   return requisicao(caminho, { ...opcoes, method: 'DELETE' });
+}
+
+export function mensagemDeErro(erro) {
+  if (erro instanceof ApiError) {
+    if (erro.status === 404) return 'Recurso não encontrado';
+    if (erro.status >= 500) return 'Erro no servidor';
+    return `Erro ${erro.status}: ${erro.statusText}`;
+  }
+  if (erro instanceof TypeError) return 'Falha de rede';
+  return 'Erro inesperado';
 }
